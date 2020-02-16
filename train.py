@@ -4,14 +4,14 @@ from torch.utils.data.dataset import Dataset
 from torchvision import transforms
 import torch
 from PIL import Image
+from torch.optim.lr_scheduler import MultiStepLR
+from model import Dave2Model 
+device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
-use_cuda = torch.cuda.is_available()
-device = torch.device("cuda:0" if use_cuda else "cpu")
 
-params = {'batch_size': 100,
-          'shuffle': True,
-          'num_workers': 6
-          }
+batch_size = 100
+num_workers = 4
+epochs = 30
 
 imgs = []
 labels = []
@@ -62,8 +62,34 @@ class SelfDrivingDataset(Dataset):
         return len(self.imgs)
 
 if __name__ == "__main__":
+    model = 
     dataset = SelfDrivingDataset()
     dataset_size = len(dataset)
-    train_set, val_set = \
-    torch.utils.data.random_split(dataset, [int(0.8* dataset_size), int(0.2*dataset_size)])
-    
+    train_dataset, val_dataset = torch.utils.data.random_split(dataset, [int(0.8* dataset_size), int(0.2*dataset_size)])
+    train_loader = torch.utils.data.DataLoader(
+        train_dataset, batch_size=batch_size, num_workers=num_workers, shuffle=True
+    )
+    val_loader = torch.utils.data.DataLoader(
+        val_dataset, batch_size=batch_size, num_workers=num_workers, shuffle=True
+    )
+    lr = 1e-4
+    weight_decay = 1e-5
+    lr_scheduler = MultiStepLR(optimizer, milestones=[30, 50], gamma=0.1)
+    optimizer = optim.Adam(model.parameters(),
+                       lr=lr,
+                       weight_decay=weight_decay)
+    criterion = nn.MSELoss()
+    train_loss = 0.
+    for epoch in range(epochs):
+        for i, imgs, labels in enumerate(train_loader):
+            imgs, labels = imgs.to(device), labels.to(device)
+            optimizer.zero_grad()
+            output = model(imgs)
+            loss = criterion(output, labels)
+            loss.backward()
+            optimizer.step()
+            train_loss += loss.data.item()
+        
+            with torch.no_grad():
+                for val_imgs, val_labels in val_loader:
+                    val_imgs, val_labels = val_imgs.to(device), val_labels.to(device)
